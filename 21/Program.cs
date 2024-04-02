@@ -1,18 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-
-class Program
+﻿class Program
 {
-    static void Main(string[] args)
+    static void Main()
     {
         while (true)
         {
             Console.Clear();
-            Console.WriteLine("Welcome to Blackjack!");
-            Console.WriteLine("Main Menu:");
-            Console.WriteLine("1. Play Blackjack");
-            Console.WriteLine("2. Quit");
+            Console.WriteLine("Üdvözöljük a blackjackben!");
+            Console.WriteLine("1. Játék indítása");
+            Console.WriteLine("2. Kilépés");
 
             char choice = Console.ReadKey(true).KeyChar;
             Console.WriteLine();
@@ -23,10 +18,9 @@ class Program
                     PlayBlackjack();
                     break;
                 case '2':
-                    Console.WriteLine("Thanks for playing!");
+                    Console.WriteLine("Köszönjük a játékot!");
                     return;
                 default:
-                    Console.WriteLine("Invalid option. Please try again.");
                     break;
             }
         }
@@ -36,252 +30,279 @@ class Program
     {
         Console.Clear();
 
-        Deck deck = new Deck();
-        deck.Shuffle();
+        Pakli pakli = new Pakli();
+        pakli.Kever();
 
         Player player = new Player();
-        ComputerPlayer computerPlayer = new ComputerPlayer();
+        AI ai = new AI();
 
-        player.AddCard(deck.DealCard());
-        computerPlayer.AddCard(deck.DealCard());
-        player.AddCard(deck.DealCard());
-        computerPlayer.AddCard(deck.DealCard());
+        player.KartyaAdd(pakli.Osztas());
+        ai.KartyaAdd(pakli.Osztas());
+        player.KartyaAdd(pakli.Osztas());
+        ai.KartyaAdd(pakli.Osztas());
 
-        player.ShowHand();
-        computerPlayer.ShowPartialHand(-1);
+        player.HandPrint();
+        ai.AIHandPrint(-1);
 
         bool playerStands = false;
-        bool computerStands = false;
+        bool aiStands = false;
 
-        while (!(playerStands && computerStands))
+        while (!(playerStands && aiStands))
         {
             char choice;
             do
             {
                 playerStands = false;
-                computerStands = false;
+                aiStands = false;
                 Console.Clear();
-                player.ShowHand();
-                computerPlayer.ShowPartialHand(-1);
-                Console.WriteLine("Hit or Stand? (h/s)");
+                player.HandPrint();
+                ai.AIHandPrint(-1);
+                Console.WriteLine("Kérsz lapot? (i/n)");
                 choice = Char.ToLower(Console.ReadKey(true).KeyChar);
-            } while (choice != 'h' && choice != 's');
+            } while (choice != 'i' && choice != 'n');
             Console.Clear();
-            if (choice == 'h')
+            if (choice == 'i')
             {
-                Card newCard = deck.DealCard();
-                player.AddCard(newCard);
-                player.ShowHand();
+                Kartya ujKartya = pakli.Osztas();
+                player.KartyaAdd(ujKartya);
+                player.HandPrint();
             }
-            else if (choice == 's')
+            else if (choice == 'n')
             {
                 playerStands = true;
             }
 
-            if (computerPlayer.ShouldHit(deck))
+            if (ai.LapKer(ai, pakli))
             {
-                Card newCard = deck.DealCard();
-                computerPlayer.AddCard(newCard);
+                Kartya ujKartya = pakli.Osztas();
+                ai.KartyaAdd(ujKartya);
             }
             else
             {
-                computerStands = true;
+                aiStands = true;
             }
         }
 
-        Console.Clear();
-        Console.WriteLine("Player's Hand:");
-        player.ShowHand();
-
-        Console.WriteLine("Computer's Hand:");
-        computerPlayer.ShowHand();
-
-        int playerScore = player.Score();
-        int computerScore = computerPlayer.Score();
-        // Determine the winner
-        if (playerScore == 21 || playerScore > computerScore && computerScore < 21 && playerScore < 21 || playerScore < 21 && computerScore > 21)
+        while (true)
         {
-            Console.WriteLine("You win!");
-        }
-        else if (computerScore == 21 || computerScore > playerScore && playerScore < 21 && computerScore < 21 || computerScore < 21 && playerScore > 21)
-        {
-            Console.WriteLine("Computer wins!");
-        }
-        else
-        {
-            Console.WriteLine("Both players lost!");
-        }
+            Console.Clear();
+            Console.WriteLine("Játékos lapjai:");
+            player.HandPrint();
 
-        Console.WriteLine("Press anything to start a new game or 'q' to return to the main menu.");
-        char continueChoice = Console.ReadKey(true).KeyChar;
-        if (Char.ToLower(continueChoice) == 'q')
-        {
-            return;
-        }
-        else
-        {
-            PlayBlackjack(); // Start a new game
-        }
+            Console.WriteLine("Ai lapjai:");
+            ai.HandPrint();
 
-
-    }
-
-}
-
-class Card
-{
-    public string Suit { get; set; }
-    public string Rank { get; set; }
-    public int Value { get; set; }
-}
-
-class Deck
-{
-    private List<Card> cards;
-    private List<Card> dealtCards;
-
-    public IEnumerable<Card> RemainingCards => cards.Except(dealtCards);
-
-    public Deck()
-    {
-        InitializeDeck();
-        dealtCards = new List<Card>();
-    }
-
-    private void InitializeDeck()
-    {
-        cards = new List<Card>();
-
-        string[] suits = { "Hearts", "Diamonds", "Clubs", "Spades" };
-        string[] ranks = { "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace" };
-
-        foreach (string suit in suits)
-        {
-            foreach (string rank in ranks)
+            int playerScore = player.Score();
+            int aiScore = ai.Score();
+            if (playerScore == 21 || playerScore > aiScore && aiScore < 21 && playerScore < 21 || playerScore < 21 && aiScore > 21)
             {
-                int value = 0;
-                if (rank == "Ace")
+                Console.WriteLine("Nyertél!");
+            }
+            else if (aiScore == 21 || aiScore > playerScore && playerScore < 21 && aiScore < 21 || aiScore < 21 && playerScore > 21)
+            {
+                Console.WriteLine("Az ai nyert!");
+            }
+            else if(aiScore == playerScore)
+            {
+                Console.WriteLine("Döntetlen!");
+            }
+            else
+            {
+                Console.WriteLine("Mindenki vesztett!");
+            }
+            Console.WriteLine("Nyomd meg az ENTER-t új kör kezdéséhez vagy az ESC-t a kilépéshez!");
+            ConsoleKeyInfo choice = Console.ReadKey(true);
+            Console.WriteLine();
+
+            if (choice.Key == ConsoleKey.Enter)
+            {
+                PlayBlackjack();
+                break;
+            }
+            else if(choice.Key == ConsoleKey.Escape)
+            {
+                break;
+            }
+        }
+    }
+}
+
+class Kartya
+{
+    public string Szin { get; set; }
+    public string Magassag { get; set; }
+    public int Ertek { get; set; }
+}
+
+class Pakli
+{
+    private List<Kartya> kartyak;
+    private List<Kartya> kiosztottKartyak;
+
+    public IEnumerable<Kartya> MaradekKartyak => kartyak.Except(kiosztottKartyak);
+
+    public Pakli()
+    {
+        PakliKeszit();
+        kiosztottKartyak = new List<Kartya>();
+    }
+
+    private void PakliKeszit()
+    {
+        kartyak = new List<Kartya>();
+
+        string[] szinek = { "Kör", "Káró", "Pikk", "Treff" };
+        string[] magassagok = { "2", "3", "4", "5", "6", "7", "8", "9", "10", "Bubi", "Királynő", "Király", "Ász" };
+
+        foreach (string szin in szinek)
+        {
+            foreach (string magassag in magassagok)
+            {
+                int ertek = 0;
+                if (magassag == "Ász")
                 {
-                    value = 11;
+                    ertek = 11;
                 }
-                else if (rank == "Jack" || rank == "Queen" || rank == "King")
+                else if (magassag == "Bubi" || magassag == "Királynő" || magassag == "Király")
                 {
-                    value = 10;
+                    ertek = 10;
                 }
                 else
                 {
-                    value = int.Parse(rank);
+                    ertek = int.Parse(magassag);
                 }
 
-                cards.Add(new Card { Suit = suit, Rank = rank, Value = value });
+                kartyak.Add(new Kartya { Szin = szin, Magassag = magassag, Ertek = ertek });
             }
         }
     }
 
-    public void Shuffle()
+    public void Kever()
     {
-        Random rng = new Random();
-        int n = cards.Count;
-        while (n > 1)
+        Random r = new Random();
+        int db = kartyak.Count;
+        while (db > 1)
         {
-            n--;
-            int k = rng.Next(n + 1);
-            Card value = cards[k];
-            cards[k] = cards[n];
-            cards[n] = value;
+            db--;
+            int i = r.Next(db + 1);
+            Kartya value = kartyak[i];
+            kartyak[i] = kartyak[db];
+            kartyak[db] = value;
         }
     }
 
-    public Card DealCard()
+    public Kartya Osztas()
     {
-        Card card = cards[0];
-        cards.RemoveAt(0);
-        dealtCards.Add(card);
-        return card;
+        Kartya kartya = kartyak[0];
+        kartyak.RemoveAt(0);
+        kiosztottKartyak.Add(kartya);
+        return kartya;
     }
 }
 
 class Player
 {
-    protected List<Card> hand;
+    protected List<Kartya> hand;
 
     public Player()
     {
-        hand = new List<Card>();
+        hand = new List<Kartya>();
     }
 
-    public void AddCard(Card card)
+    public void KartyaAdd(Kartya kartya)
     {
-        hand.Add(card);
+        hand.Add(kartya);
     }
 
-    public void ShowHand()
+    public void HandPrint()
     {
-        foreach (var card in hand)
+        int i = 0;
+        foreach (var kartya in hand)
         {
-            Console.WriteLine($"{card.Rank} of {card.Suit}");
+            i++;
+            Console.WriteLine($"{i} lap: {kartya.Szin} {kartya.Magassag}");
         }
-        Console.WriteLine($"Total: {Score()}");
+        Console.WriteLine($"pontok: {Score()}");
     }
 
     public int Score()
     {
         int score = 0;
-        int numAces = 0;
+        int AszDb = 0;
 
-        foreach (var card in hand)
+        foreach (var kartya in hand)
         {
-            score += card.Value;
-            if (card.Rank == "Ace")
+            score += kartya.Ertek;
+            if (kartya.Magassag == "Ász")
             {
-                numAces++;
+                AszDb++;
             }
         }
 
-        while (score > 21 && numAces > 0)
+        while (score > 21 && AszDb > 0)
         {
             score -= 10;
-            numAces--;
+            AszDb--;
         }
 
         return score;
     }
 }
 
-class ComputerPlayer : Player
+class AI : Player
 {
-    public void ShowPartialHand(int newCardIndex)
+    public void AIHandPrint(int ujKartya)
     {
-        Console.WriteLine("Computer's Hand:");
-        Console.WriteLine("Card 1: Hidden");
+        Console.WriteLine("ai lapjai:");
+        Console.WriteLine("1 lap: Rejtett");
 
-        if (newCardIndex >= 0 && newCardIndex < hand.Count)
+        if (ujKartya >= 0 && ujKartya < hand.Count)
         {
             for (int i = 1; i < hand.Count; i++)
             {
-                Console.WriteLine($"Card {i + 1}: {hand[i].Rank} of {hand[i].Suit}");
+                Console.WriteLine($"{i + 1} lap: {hand[i].Szin} {hand[i].Magassag} ");
             }
-            Console.WriteLine($"Card {newCardIndex + 1}: {hand[newCardIndex].Rank} of {hand[newCardIndex].Suit}");
+            Console.WriteLine($"{ujKartya + 1} lap: {hand[ujKartya].Szin} {hand[ujKartya].Magassag} ");
         }
         else
         {
             for (int i = 1; i < hand.Count; i++)
             {
-                Console.WriteLine($"Card {i + 1}: {hand[i].Rank} of {hand[i].Suit}");
+                Console.WriteLine($"{i + 1} lap: {hand[i].Szin} {hand[i].Magassag} ");
             }
         }
-        int total = 0;
+        int ossz = 0;
         for (int i = 1; i < hand.Count; i++)
         {
-            total += hand[i].Value;
+            ossz += hand[i].Ertek;
         }
-        Console.WriteLine($"Total: {total}");
+        Console.WriteLine($"pontok: {ossz}");
     }
 
-    public bool ShouldHit(Deck deck)
+    public bool LapKer(Player player, Pakli pakli)
     {
-        int myScore = Score();
+        int aiScore = Score();
+        int playerScore = player.Score();
+        int joKartyak = 0;
+        int ossz = pakli.MaradekKartyak.Count();
 
-        return myScore < 17;
+        foreach (var kartya in pakli.MaradekKartyak)
+        {
+            int lehetsegesScore = aiScore + kartya.Ertek;
+            if (lehetsegesScore <= 21)
+            {
+                joKartyak++;
+            }
+        }
+
+        double valoszinuseg = (double)joKartyak / ossz;
+
+        if (playerScore > aiScore && playerScore < 21)
+        {
+            if (playerScore - aiScore > 3 || valoszinuseg > 0.3)
+                return true;
+            return aiScore < 17;
+        }
+        return aiScore < 17;
     }
 }
