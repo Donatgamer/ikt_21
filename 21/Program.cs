@@ -37,12 +37,13 @@
         AI ai = new AI();
 
         player.KartyaAdd(pakli.Osztas());
+        player.PowerUpAdd(pakli.PowerUpOsztas());
         ai.KartyaAdd(pakli.Osztas());
+        ai.PowerUpAdd(pakli.PowerUpOsztas());
         player.KartyaAdd(pakli.Osztas());
+        player.PowerUpAdd(pakli.PowerUpOsztas());
         ai.KartyaAdd(pakli.Osztas());
-
-        player.HandPrint();
-        ai.AIHandPrint(-1);
+        ai.PowerUpAdd(pakli.PowerUpOsztas());
 
         bool playerStands = false;
         bool aiStands = false;
@@ -56,9 +57,28 @@
                 aiStands = false;
                 Console.Clear();
                 player.HandPrint();
-                ai.AIHandPrint(-1);
-                Console.WriteLine("Kérsz lapot? (i/n)");
+                ai.AIHandPrint();
+                Console.WriteLine("Kérsz lapot vagy használsz egy powerupot? (i/n/t)");
                 choice = Char.ToLower(Console.ReadKey(true).KeyChar);
+                if(choice == 't' && player.MegszerzettPowerUps.Count > 0)
+                {
+                    Console.WriteLine("Használható powerupok:");
+                    for (int i = 0; i < player.MegszerzettPowerUps.Count; i++)
+                    {
+                        Console.WriteLine($"{i+1} {player.MegszerzettPowerUps[i].nev}");
+                        
+                    }
+                    choice = Console.ReadKey(true).KeyChar;
+                    int j = choice - 48;
+                    if(j <= player.MegszerzettPowerUps.Count)
+                    {
+                        if (player.MegszerzettPowerUps[j - 1] != null)
+                        {
+                            player.PowerUpHasznal(player.MegszerzettPowerUps[j - 1]);
+                            player.MegszerzettPowerUps.Remove(player.MegszerzettPowerUps[j - 1]);
+                        }
+                    }
+                }
             } while (choice != 'i' && choice != 'n');
             Console.Clear();
             if (choice == 'i')
@@ -134,10 +154,16 @@ class Kartya
     public int Ertek { get; set; }
 }
 
+class PowerUp
+{
+    public string nev { get; set; }
+}
+
 class Pakli
 {
-    private List<Kartya> kartyak;
-    private List<Kartya> kiosztottKartyak;
+    public List<Kartya> kartyak;
+    public List<Kartya> kiosztottKartyak;
+    public List<PowerUp> powerupok;
 
     public IEnumerable<Kartya> MaradekKartyak => kartyak.Except(kiosztottKartyak);
 
@@ -147,7 +173,7 @@ class Pakli
         kiosztottKartyak = new List<Kartya>();
     }
 
-    private void PakliKeszit()
+    public void PakliKeszit()
     {
         kartyak = new List<Kartya>();
 
@@ -175,6 +201,10 @@ class Pakli
                 kartyak.Add(new Kartya { Szin = szin, Magassag = magassag, Ertek = ertek });
             }
         }
+
+        //itt kell letrehozni a powerupokat
+        powerupok = new List<PowerUp>();
+        powerupok.Add(new PowerUp { nev = "Húzz fel egy 6-t"});
     }
 
     public void Kever()
@@ -198,20 +228,41 @@ class Pakli
         kiosztottKartyak.Add(kartya);
         return kartya;
     }
+
+    public PowerUp PowerUpOsztas()
+    {
+        Random r = new Random();
+        PowerUp powerup = powerupok[r.Next(powerupok.Count)];
+        return powerup;
+    }
 }
 
 class Player
 {
-    protected List<Kartya> hand;
+    public List<Kartya> hand;
+    public List<PowerUp> MegszerzettPowerUps;
 
     public Player()
     {
         hand = new List<Kartya>();
+        MegszerzettPowerUps = new List<PowerUp>();
     }
 
     public void KartyaAdd(Kartya kartya)
     {
         hand.Add(kartya);
+    }
+
+    public void PowerUpAdd(PowerUp powerup)
+    {
+        MegszerzettPowerUps.Add(powerup);
+    }
+
+    public void PowerUpHasznal(PowerUp powerUp)
+    {
+        //itt mondhatod meg hogy mit csináljon egy powerup
+        if (powerUp.nev == "Húzz fel egy 6-t")
+            hand.Add(new Kartya { Szin = "powerup", Magassag = "6", Ertek = 6 });
     }
 
     public void HandPrint()
@@ -251,25 +302,13 @@ class Player
 
 class AI : Player
 {
-    public void AIHandPrint(int ujKartya)
+    public void AIHandPrint()
     {
         Console.WriteLine("ai lapjai:");
         Console.WriteLine("1 lap: Rejtett");
-
-        if (ujKartya >= 0 && ujKartya < hand.Count)
+        for (int i = 1; i < hand.Count; i++)
         {
-            for (int i = 1; i < hand.Count; i++)
-            {
-                Console.WriteLine($"{i + 1} lap: {hand[i].Szin} {hand[i].Magassag} ");
-            }
-            Console.WriteLine($"{ujKartya + 1} lap: {hand[ujKartya].Szin} {hand[ujKartya].Magassag} ");
-        }
-        else
-        {
-            for (int i = 1; i < hand.Count; i++)
-            {
-                Console.WriteLine($"{i + 1} lap: {hand[i].Szin} {hand[i].Magassag} ");
-            }
+            Console.WriteLine($"{i + 1} lap: {hand[i].Szin} {hand[i].Magassag} ");
         }
         int ossz = 0;
         for (int i = 1; i < hand.Count; i++)
