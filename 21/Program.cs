@@ -202,9 +202,13 @@ class Pakli
             }
         }
 
-        //itt kell letrehozni a powerupokat
+        
         powerupok = new List<PowerUp>();
-        powerupok.Add(new PowerUp { nev = "Húzz fel egy 6-t"});
+        powerupok.Add(new PowerUp { nev = "Húzz fel egy 6-ot"});
+        powerupok.Add(new PowerUp { nev = "Húzz fel egy 10-et"});
+        powerupok.Add(new PowerUp { nev = "Töröld az első lapod"});
+        powerupok.Add(new PowerUp { nev = "Töröld a második lapod"});
+
     }
 
     public void Kever()
@@ -260,9 +264,48 @@ class Player
 
     public void PowerUpHasznal(PowerUp powerUp)
     {
-        //itt mondhatod meg hogy mit csináljon egy powerup
+        
         if (powerUp.nev == "Húzz fel egy 6-t")
+        {
             hand.Add(new Kartya { Szin = "powerup", Magassag = "6", Ertek = 6 });
+        }
+
+        if (powerUp.nev == "Húzz fel egy 10-et")
+        {
+            hand.Add(new Kartya { Szin = "powerup", Magassag = "10", Ertek = 10 });
+        }
+
+        if (powerUp.nev == "Töröld az első lapod")
+        {
+            hand.RemoveAt(0);
+        }
+
+        if (powerUp.nev == "Töröld a második lapod")
+        {
+            hand.RemoveAt(1);
+        }
+
+
+
+        //if (powerUp.nev == "Duplázz")
+        //{
+        //    char choice;
+        //    int i = 0;
+        //    Console.WriteLine("Melyik lapod értékét szeretnéd megduplázni? (Csak a két alap lapból választhatsz!)");
+        //    foreach (var kartya in hand)
+        //    {
+        //        i++;
+        //        Console.WriteLine($"{i} lap: {kartya.Szin} {kartya.Magassag}");
+        //    }
+        //    choice = Char.ToLower(Console.ReadKey(true).KeyChar);
+        //    if (choice == '1')
+        //    {
+
+            
+        //    }
+
+
+        //}
     }
 
     public void HandPrint()
