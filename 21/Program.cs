@@ -1,4 +1,7 @@
-﻿class Program
+﻿using System.Formats.Asn1;
+using System.Numerics;
+
+class Program
 {
     static void Main()
     {
@@ -19,6 +22,7 @@
                     break;
                 case '2':
                     Console.WriteLine("Köszönjük a játékot!");
+                    Console.ForegroundColor = ConsoleColor.Black;
                     return;
                 default:
                     break;
@@ -28,7 +32,6 @@
 
     static void PlayBlackjack()
     {
-        Console.Clear();
 
         Pakli pakli = new Pakli();
         pakli.Kever();
@@ -36,63 +39,69 @@
         Player player = new Player();
         AI ai = new AI();
 
-        player.KartyaAdd(pakli.Osztas());
-        player.PowerUpAdd(pakli.PowerUpOsztas());
-        ai.KartyaAdd(pakli.Osztas());
-        ai.PowerUpAdd(pakli.PowerUpOsztas());
-        player.KartyaAdd(pakli.Osztas());
-        player.PowerUpAdd(pakli.PowerUpOsztas());
-        ai.KartyaAdd(pakli.Osztas());
-        ai.PowerUpAdd(pakli.PowerUpOsztas());
+        for (int i = 0; i < 2; i++)
+        {
+            player.KartyaAdd(pakli.Osztas());
+            player.PowerUpAdd(pakli.PowerUpOsztas());
+            ai.KartyaAdd(pakli.Osztas());
+            ai.PowerUpAdd(pakli.PowerUpOsztas());
+        }
 
         bool playerStands = false;
         bool aiStands = false;
-
+        int? targetScore = 21;
+        Random r = new Random();
         while (!(playerStands && aiStands))
         {
             char choice;
             do
             {
+
                 playerStands = false;
                 aiStands = false;
                 Console.Clear();
-                player.HandPrint();
+                Console.WriteLine(targetScore);
+                player.HandPrint(targetScore);
                 ai.AIHandPrint();
                 Console.WriteLine("Kérsz lapot vagy használsz egy powerupot? (i/n/t)");
                 choice = Char.ToLower(Console.ReadKey(true).KeyChar);
-                if(choice == 't' && player.MegszerzettPowerUps.Count > 0)
+                if (choice == 't' && player.MegszerzettPowerUps.Count > 0)
                 {
                     Console.WriteLine("Használható powerupok:");
                     for (int i = 0; i < player.MegszerzettPowerUps.Count; i++)
                     {
-                        Console.WriteLine($"{i+1} {player.MegszerzettPowerUps[i].nev}");
-                        
+                        Console.WriteLine($"{i + 1} {player.MegszerzettPowerUps[i].nev}");
+
                     }
                     choice = Console.ReadKey(true).KeyChar;
                     int j = choice - 48;
-                    if(j <= player.MegszerzettPowerUps.Count)
+                    if (j >= 0 && j <= 9 && j <= player.MegszerzettPowerUps.Count && player.MegszerzettPowerUps[j - 1] != null)
                     {
-                        if (player.MegszerzettPowerUps[j - 1] != null)
-                        {
-                            player.PowerUpHasznal(player.MegszerzettPowerUps[j - 1]);
-                            player.MegszerzettPowerUps.Remove(player.MegszerzettPowerUps[j - 1]);
-                        }
+                        int? elozo = targetScore;
+                        targetScore = player.PowerUpHasznal(player.MegszerzettPowerUps[j - 1].id, ai, targetScore);
+                        if (targetScore == null)
+                            targetScore = elozo;
+                        player.MegszerzettPowerUps.Remove(player.MegszerzettPowerUps[j - 1]);
                     }
                 }
+                if (r.Next(1) == 1)
+                    player.PowerUpAdd(pakli.PowerUpOsztas());
+                if (r.Next(1) == 1)
+                    ai.PowerUpAdd(pakli.PowerUpOsztas());
             } while (choice != 'i' && choice != 'n');
             Console.Clear();
             if (choice == 'i')
             {
                 Kartya ujKartya = pakli.Osztas();
                 player.KartyaAdd(ujKartya);
-                player.HandPrint();
+                player.HandPrint(targetScore);
             }
             else if (choice == 'n')
             {
                 playerStands = true;
             }
 
-            if (ai.LapKer(ai, pakli))
+            if (ai.LapKer(pakli, targetScore, player))
             {
                 Kartya ujKartya = pakli.Osztas();
                 ai.KartyaAdd(ujKartya);
@@ -107,22 +116,22 @@
         {
             Console.Clear();
             Console.WriteLine("Játékos lapjai:");
-            player.HandPrint();
+            player.HandPrint(targetScore);
 
             Console.WriteLine("Ai lapjai:");
-            ai.HandPrint();
+            ai.HandPrint(targetScore);
 
-            int playerScore = player.Score();
-            int aiScore = ai.Score();
-            if (playerScore == 21 || playerScore > aiScore && aiScore < 21 && playerScore < 21 || playerScore < 21 && aiScore > 21)
+            int playerScore = player.Score(targetScore);
+            int aiScore = ai.Score(targetScore);
+            if (playerScore == targetScore && playerScore != aiScore || playerScore > aiScore && aiScore < targetScore && playerScore < targetScore || playerScore < targetScore && aiScore > targetScore)
             {
                 Console.WriteLine("Nyertél!");
             }
-            else if (aiScore == 21 || aiScore > playerScore && playerScore < 21 && aiScore < 21 || aiScore < 21 && playerScore > 21)
+            else if (aiScore == targetScore && playerScore != aiScore || aiScore > playerScore && playerScore < targetScore && aiScore < targetScore || aiScore < targetScore && playerScore > targetScore)
             {
                 Console.WriteLine("Az ai nyert!");
             }
-            else if(aiScore == playerScore)
+            else if (aiScore == playerScore)
             {
                 Console.WriteLine("Döntetlen!");
             }
@@ -139,7 +148,7 @@
                 PlayBlackjack();
                 break;
             }
-            else if(choice.Key == ConsoleKey.Escape)
+            else if (choice.Key == ConsoleKey.Escape)
             {
                 break;
             }
@@ -157,6 +166,7 @@ class Kartya
 class PowerUp
 {
     public string nev { get; set; }
+    public int id { get; set; }
 }
 
 class Pakli
@@ -202,13 +212,22 @@ class Pakli
             }
         }
 
-        
-        powerupok = new List<PowerUp>();
-        powerupok.Add(new PowerUp { nev = "Húzz fel egy 6-ot"});
-        powerupok.Add(new PowerUp { nev = "Húzz fel egy 10-et"});
-        powerupok.Add(new PowerUp { nev = "Töröld az első lapod"});
-        powerupok.Add(new PowerUp { nev = "Töröld a második lapod"});
-
+        //itt kell letrehozni a powerupokat
+        powerupok = new List<PowerUp>
+        {
+            new PowerUp { nev = "Húzz fel egy 2-t", id = 0 },
+            new PowerUp { nev = "Húzz fel egy 3-t", id = 1 },
+            new PowerUp { nev = "Húzz fel egy 4-t", id = 2 },
+            new PowerUp { nev = "Húzz fel egy 5-t", id = 3 },
+            new PowerUp { nev = "Húzz fel egy 6-t", id = 4 },
+            new PowerUp { nev = "Húzz fel egy 7-t", id = 5 },
+            new PowerUp { nev = "17 a cél", id = 6 },
+            new PowerUp { nev = "24 a cél", id = 7 },
+            new PowerUp { nev = "27 a cél", id = 8 },
+            new PowerUp { nev = "Töröld a legutóbbi kártyádat", id = 9 },
+            new PowerUp { nev = "Töröld az ai legutóbbi kártyáját", id = 10 },
+            new PowerUp { nev = "Húzd fel a lehető legjobb kártyát", id = 11 },
+        };
     }
 
     public void Kever()
@@ -262,53 +281,53 @@ class Player
         MegszerzettPowerUps.Add(powerup);
     }
 
-    public void PowerUpHasznal(PowerUp powerUp)
+    public int? PowerUpHasznal(int id, Player player, int? targetScore)
     {
-        
-        if (powerUp.nev == "Húzz fel egy 6-t")
+        //itt mondhatod meg hogy mit csináljon egy powerup
+        switch (id)
         {
-            hand.Add(new Kartya { Szin = "powerup", Magassag = "6", Ertek = 6 });
+            case 0:
+                hand.Add(new Kartya { Szin = "powerup", Magassag = "2", Ertek = 2 });
+                return null;
+            case 1:
+                hand.Add(new Kartya { Szin = "powerup", Magassag = "3", Ertek = 3 });
+                return null;
+            case 2:
+                hand.Add(new Kartya { Szin = "powerup", Magassag = "4", Ertek = 4 });
+                return null; ;
+            case 3:
+                hand.Add(new Kartya { Szin = "powerup", Magassag = "5", Ertek = 5 });
+                return null;
+            case 4:
+                hand.Add(new Kartya { Szin = "powerup", Magassag = "6", Ertek = 6 });
+                return null;
+            case 5:
+                hand.Add(new Kartya { Szin = "powerup", Magassag = "7", Ertek = 7 });
+                return null;
+            case 6:
+                return 17;
+            case 7:
+                return 24;
+            case 8:
+                return 27;
+            case 9:
+                hand.RemoveAt(hand.Count - 1);
+                return null;
+            case 10:
+                player.hand.RemoveAt(player.hand.Count - 1);
+                return null;
+            case 11:
+                if (targetScore - Score(targetScore) >= 11)
+                    hand.Add(new Kartya { Szin = "powerup", Magassag = "Ász", Ertek = 11 });
+                else
+                    hand.Add(new Kartya { Szin = "powerup", Magassag = $"{targetScore - Score(targetScore)}", Ertek = targetScore.GetValueOrDefault() - Score(targetScore) });
+                return null;
+            default:
+                return null;
         }
-
-        if (powerUp.nev == "Húzz fel egy 10-et")
-        {
-            hand.Add(new Kartya { Szin = "powerup", Magassag = "10", Ertek = 10 });
-        }
-
-        if (powerUp.nev == "Töröld az első lapod")
-        {
-            hand.RemoveAt(0);
-        }
-
-        if (powerUp.nev == "Töröld a második lapod")
-        {
-            hand.RemoveAt(1);
-        }
-
-
-
-        //if (powerUp.nev == "Duplázz")
-        //{
-        //    char choice;
-        //    int i = 0;
-        //    Console.WriteLine("Melyik lapod értékét szeretnéd megduplázni? (Csak a két alap lapból választhatsz!)");
-        //    foreach (var kartya in hand)
-        //    {
-        //        i++;
-        //        Console.WriteLine($"{i} lap: {kartya.Szin} {kartya.Magassag}");
-        //    }
-        //    choice = Char.ToLower(Console.ReadKey(true).KeyChar);
-        //    if (choice == '1')
-        //    {
-
-            
-        //    }
-
-
-        //}
     }
 
-    public void HandPrint()
+    public void HandPrint(int? targetScore)
     {
         int i = 0;
         foreach (var kartya in hand)
@@ -316,10 +335,10 @@ class Player
             i++;
             Console.WriteLine($"{i} lap: {kartya.Szin} {kartya.Magassag}");
         }
-        Console.WriteLine($"pontok: {Score()}");
+        Console.WriteLine($"pontok: {Score(targetScore)}");
     }
 
-    public int Score()
+    public int Score(int? targetScore)
     {
         int score = 0;
         int AszDb = 0;
@@ -333,7 +352,7 @@ class Player
             }
         }
 
-        while (score > 21 && AszDb > 0)
+        while (score > targetScore && AszDb > 0)
         {
             score -= 10;
             AszDb--;
@@ -361,17 +380,19 @@ class AI : Player
         Console.WriteLine($"pontok: {ossz}");
     }
 
-    public bool LapKer(Player player, Pakli pakli)
+    public bool LapKer(Pakli pakli, int? targetScore, Player player)
     {
-        int aiScore = Score();
-        int playerScore = player.Score();
+        AiPowerUpHazsnal(targetScore, player);
+
+        int aiScore = Score(targetScore);
+        int playerScore = player.Score(targetScore);
         int joKartyak = 0;
         int ossz = pakli.MaradekKartyak.Count();
 
         foreach (var kartya in pakli.MaradekKartyak)
         {
             int lehetsegesScore = aiScore + kartya.Ertek;
-            if (lehetsegesScore <= 21)
+            if (lehetsegesScore <= targetScore)
             {
                 joKartyak++;
             }
@@ -379,12 +400,60 @@ class AI : Player
 
         double valoszinuseg = (double)joKartyak / ossz;
 
-        if (playerScore > aiScore && playerScore < 21)
+        if (playerScore > aiScore && playerScore < targetScore)
         {
             if (playerScore - aiScore > 3 || valoszinuseg > 0.3)
                 return true;
-            return aiScore < 17;
+            return aiScore < targetScore - 4;
         }
-        return aiScore < 17;
+        return aiScore < targetScore - 4;
+    }
+
+    public int? AiPowerUpHazsnal(int? targetScore, Player player)
+    {
+        int aiPowerUpId = AiPowerUpDecide(targetScore, player);
+
+        int? elozo = targetScore;
+        targetScore = PowerUpHasznal(aiPowerUpId, player, targetScore);
+        if (aiPowerUpId != -1)
+            for (int i = 0; i < MegszerzettPowerUps.Count; i++)
+            {
+                if (MegszerzettPowerUps[i].id == aiPowerUpId)
+                    MegszerzettPowerUps.RemoveAt(i);
+            }
+        if (targetScore == null)
+            return elozo;
+        return targetScore;
+    }
+    public int AiPowerUpDecide(int? targetScore, Player player)
+    {
+        for (int i = 0; i < MegszerzettPowerUps.Count; i++)
+        {
+            if (MegszerzettPowerUps[i].id == 0 && Score(targetScore) <= targetScore - 2)
+                return 0;
+            else if (MegszerzettPowerUps[i].id == 1 && Score(targetScore) <= targetScore - 3)
+                return 1;
+            else if (MegszerzettPowerUps[i].id == 2 && Score(targetScore) <= targetScore - 4)
+                return 2;
+            else if (MegszerzettPowerUps[i].id == 3 && Score(targetScore) <= targetScore - 5)
+                return 3;
+            else if (MegszerzettPowerUps[i].id == 4 && Score(targetScore) <= targetScore - 6)
+                return 4;
+            else if (MegszerzettPowerUps[i].id == 5 && Score(targetScore) <= targetScore - 7)
+                return 5;
+            else if (MegszerzettPowerUps[i].id == 6 && Score(targetScore) <= 17)
+                return 6;
+            else if (MegszerzettPowerUps[i].id == 7 && Score(targetScore) > 21)
+                return 7;
+            else if (MegszerzettPowerUps[i].id == 8 && Score(targetScore) > 21)
+                return 8;
+            else if (MegszerzettPowerUps[i].id == 9 && Score(targetScore) > targetScore)
+                return 9;
+            else if (MegszerzettPowerUps[i].id == 10 && player.Score(targetScore) < targetScore)
+                return 10;
+            else if (MegszerzettPowerUps[i].id == 11)
+                return 11;
+        }
+        return -1;
     }
 }
